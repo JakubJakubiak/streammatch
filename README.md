@@ -8,7 +8,7 @@ A from-scratch rewrite of [Tinder_Twitch](https://github.com/JakubJakubiak/Tinde
 
 ## Stack
 
-- **App:** Expo SDK 57, Expo Router, React Native 0.86, Reanimated 4 (iOS, Android, web)
+- **App:** React Native 0.86 with native `ios/` and `android/` projects, Expo Router, Reanimated 4
 - **Backend:** [Convex](https://www.convex.dev) — database, realtime queries, cron jobs
 - **Auth:** [Convex Auth](https://labs.convex.dev/auth) with Twitch OAuth (no Firebase, no separate auth server)
 
@@ -28,8 +28,34 @@ A from-scratch rewrite of [Tinder_Twitch](https://github.com/JakubJakubiak/Tinde
 npm install
 npx convex dev            # log in, create a project, writes .env.local; keep it running
 npx @convex-dev/auth      # generates JWT keys and sets SITE_URL (use http://localhost:8081)
-npx expo start            # in a second terminal
+npm start                 # Metro bundler, in a second terminal
 ```
+
+### Native builds
+
+The app is built from the native projects in `ios/` and `android/` — no Expo Go
+and no EAS. Expo libraries are used only as ordinary npm packages.
+
+**iOS** (Xcode + CocoaPods):
+
+```bash
+cd ios && LANG=en_US.UTF-8 pod install && cd ..
+open ios/StreamMatch.xcworkspace     # then Run in Xcode
+# or from the terminal:
+npm run ios
+```
+
+**Android** (Android Studio, or Gradle directly):
+
+```bash
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+npm run android                      # or: cd android && ./gradlew assembleDebug
+```
+
+Debug builds load JavaScript from Metro (`npm start`). After changing
+`app.json` (name, icons, permissions, plugins) regenerate the native projects
+with `npx expo prebuild`.
 
 ### Twitch login
 
