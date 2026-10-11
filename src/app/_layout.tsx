@@ -1,18 +1,76 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { ConvexAuthProvider, useAuthActions } from '@convex-dev/auth/react';
+import { useConvexAuth, useQuery } from 'convex/react';
+import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { Loading } from '@/components/ui';
+import { Colors } from '@/constants/theme';
+import { api } from '@/lib/api';
+import { convex, tokenStorage } from '@/lib/convex';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+const theme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: Colors.primary,
+    background: Colors.background,
+    card: Colors.background,
+    text: Colors.text,
+    border: Colors.border,
+  },
+};
+
+function RootNavigator() {
+  const { isLoading, isAuthenticated } = useConvexAuth();
+  const { signOut } = useAuthActions();
+  const me = useQuery(api.profiles.me, isAuthenticated ? {} : 'skip');
+  const ready = !isLoading && (!isAuthenticated || me !== undefined);
+
+  useEffect(() => {
+    if (ready) SplashScreen.hide();
+  }, [ready]);
+
+  // A session whose profile is gone (deleted account) cannot do anything useful.
+  useEffect(() => {
+    if (isAuthenticated && me === null) void signOut();
+  }, [isAuthenticated, me, signOut]);
+
+  if (!ready) return <Loading />;
+
+  const signedIn = isAuthenticated && me != null;
+  const onboarded = signedIn && me.onboarded;
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.background } }}>
+      <Stack.Protected guard={!signedIn}>
+        <Stack.Screen name="sign-in" />
+      </Stack.Protected>
+      <Stack.Protected guard={signedIn && !onboarded}>
+        <Stack.Screen name="onboarding" />
+      </Stack.Protected>
+      <Stack.Protected guard={onboarded}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="chat/[matchId]" />
+        <Stack.Screen name="user/[userId]" options={{ presentation: 'modal' }} />
+      </Stack.Protected>
+    </Stack>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.background }}>
+      <ConvexAuthProvider client={convex} storage={tokenStorage}>
+        <ThemeProvider value={theme}>
+          <StatusBar style="light" />
+          <RootNavigator />
+        </ThemeProvider>
+      </ConvexAuthProvider>
+    </GestureHandlerRootView>
   );
 }

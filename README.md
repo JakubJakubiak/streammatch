@@ -1,56 +1,79 @@
-# Welcome to your Expo app 👋
+# StreamMatch
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A Tinder-style app for Twitch streamers: sign in with Twitch, swipe on other
+streamers, find the ones near you, match and chat in real time.
 
-## Get started
+A from-scratch rewrite of [Tinder_Twitch](https://github.com/JakubJakubiak/Tinder_Twitch)
+(React Native 0.73 + Firebase), which is kept as the legacy version.
 
-1. Install dependencies
+## Stack
 
-   ```bash
-   npm install
-   ```
+- **App:** Expo SDK 57, Expo Router, React Native 0.86, Reanimated 4 (iOS, Android, web)
+- **Backend:** [Convex](https://www.convex.dev) — database, realtime queries, cron jobs
+- **Auth:** [Convex Auth](https://labs.convex.dev/auth) with Twitch OAuth (no Firebase, no separate auth server)
 
-2. Start the app
+## Features
 
-   ```bash
-   npx expo start
-   ```
+- Twitch login; avatar, bio, follower count and live status pulled from the Twitch API
+- Swipe deck ordered by live status, shared interests and distance
+- **Nearby**: streamers within 10–300 km, with a "live now" filter
+- Mutual likes create a match; realtime chat with unread badges
+- Profile: bio, intent (friends / collabs / dating), interests, distance, visibility
+- Safety: 18+ confirmation, block, report, unmatch, full account deletion
+- Location is rounded to ~1 km before it is stored, and other users only ever see a distance
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Setup
 
 ```bash
-npm run reset-project
+npm install
+npx convex dev            # log in, create a project, writes .env.local; keep it running
+npx @convex-dev/auth      # generates JWT keys and sets SITE_URL (use http://localhost:8081)
+npx expo start            # in a second terminal
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Twitch login
 
-### Other setup steps
+1. Create an application at <https://dev.twitch.tv/console/apps>.
+2. Add this OAuth redirect URL (your deployment name is in `.env.local`):
+   `https://<your-deployment>.convex.site/api/auth/callback/twitch`
+3. Give Convex the credentials:
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+npx convex env set AUTH_TWITCH_ID <client id>
+npx convex env set AUTH_TWITCH_SECRET <client secret>
+```
 
-## Learn more
+### Trying it without Twitch
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npx convex env set DEMO_LOGIN true                        # adds a "Try a demo account" button
+npx convex run seed:run '{"lat": 52.23, "lng": 21.01}'    # 20 fake streamers around that point
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Run the seed again after signing in: half of the fake streamers then like you
+back, so swiping right on them produces matches. Never set `DEMO_LOGIN` on a
+production deployment.
 
-## Join the community
+## Layout
 
-Join our community of developers creating universal apps.
+```
+convex/            backend
+  schema.ts        tables and indexes
+  auth.ts          Twitch provider, profile creation on first sign-in
+  discover.ts      swipe deck and nearby search (1° grid cells + haversine)
+  swipes.ts        likes, passes and match creation
+  matches.ts       match list, unread state, unmatch
+  messages.ts      chat
+  twitch.ts        Twitch API sync and the live-status cron
+  safety.ts        block and report
+  seed.ts          demo data
+src/app/           screens (Expo Router)
+src/components/    swipe card, profile card, shared UI
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Checks
+
+```bash
+npx tsc --noEmit
+npx expo lint
+```
