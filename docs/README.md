@@ -75,7 +75,7 @@ Zrzuty z natywnej aplikacji iOS (symulator iPhone 17), na danych testowych.
 
 - **Licznik polubień** w prawym górnym rogu Discover; dotknięcie otwiera ekran Premium.
 - **Reklama** zajmuje co trzecią kartę u kont darmowych. Przesuwa się ją jak profil.
-- **Ekran Premium** — cztery plany: tygodniowy (z 3 dniami za darmo), miesięczny, roczny i
+- **Ekran Premium** — trzy plany: tygodniowy (z 3 dniami za darmo), miesięczny i
   „Forever" (jednorazowy). Ceny na zrzucie to podgląd; prawdziwe zawsze pochodzą ze sklepu.
 - **Wyliczenia na planach** liczy aplikacja z cen ze sklepu: koszt tygodniowy każdego planu,
   „SAVE x%" względem najdroższego planu w przeliczeniu na tydzień oraz po ilu miesiącach zwraca
@@ -232,12 +232,12 @@ a funkcje czatu dodatkowo to, czy należy on do danego dopasowania (`requireMatc
 
 1. Załóż projekt na revenuecat.com i dodaj aplikacje iOS oraz Android
    (bundle id / package: `com.jakubjakubiak.streammatch`).
-2. W App Store Connect i Google Play Console utwórz cztery produkty: subskrypcje tygodniową
-   (z darmowym okresem próbnym 3 dni jako ofertą wprowadzającą), miesięczną i roczną oraz
-   jednorazowy zakup „lifetime". Tu ustawiasz ceny, np. 14,99 / 49,99 / 299,99 / 499 $.
-3. W RevenueCat: entitlement o identyfikatorze **`premium`**, przypięte do niego te cztery
-   produkty, oraz offering „default" z pakietami Weekly, Monthly, Annual i Lifetime. Aplikacja
-   rozpoznaje plany po typie pakietu.
+2. W App Store Connect i Google Play Console utwórz trzy produkty: subskrypcję tygodniową
+   (z darmowym okresem próbnym 3 dni jako ofertą wprowadzającą), subskrypcję miesięczną oraz
+   jednorazowy zakup „lifetime". Tu ustawiasz ceny, np. 14,99 / 49,99 / 499 $.
+3. W RevenueCat: entitlement o identyfikatorze **`premium`**, przypięte do niego te trzy
+   produkty, oraz offering „default" z pakietami Weekly, Monthly i Lifetime. Aplikacja
+   rozpoznaje plany po typie pakietu (gdybyś kiedyś dodał pakiet Annual, pokaże się sam).
 4. Klucze publiczne SDK wpisz do `.env.local` i przebuduj aplikację:
 
    ```

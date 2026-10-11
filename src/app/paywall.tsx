@@ -39,7 +39,6 @@ const PLAN_NAMES: Record<PlanKind, string> = {
 const PREVIEW: [PlanKind, number, number | null][] = [
   ['weekly', 14.99, 3],
   ['monthly', 49.99, null],
-  ['annual', 299.99, null],
   ['lifetime', 499, null],
 ];
 
@@ -119,7 +118,7 @@ export default function Paywall() {
   const refresh = useAction(api.billing.refresh);
   const [plans, setPlans] = useState<Plan[] | null>(purchasesAvailable ? null : PREVIEW_PLANS);
   const [selected, setSelected] = useState<string | null>(
-    purchasesAvailable ? null : 'preview_annual',
+    purchasesAvailable ? null : 'preview_monthly',
   );
   const [busy, setBusy] = useState<'buy' | 'restore' | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -133,7 +132,7 @@ export default function Paywall() {
         if (!active) return;
         const sorted = [...loaded].sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind));
         setPlans(sorted);
-        setSelected((sorted.find((plan) => plan.kind === 'annual') ?? sorted[0])?.id ?? null);
+        setSelected((sorted.find((plan) => plan.kind === 'monthly') ?? sorted[0])?.id ?? null);
       });
     return () => {
       active = false;
@@ -295,8 +294,8 @@ export default function Paywall() {
               </Pressable>
 
               <Text style={styles.legal}>
-                Weekly, monthly and yearly plans renew automatically until cancelled. Cancel any time
-                in your store account settings. A free trial becomes a paid subscription unless cancelled
+                Weekly and monthly plans renew automatically until cancelled. Cancel any time in your
+                store account settings. A free trial becomes a paid subscription unless cancelled
                 at least 24 hours before it ends. The Forever plan is a one-time purchase.
               </Text>
             </>

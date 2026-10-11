@@ -45,7 +45,7 @@ const PLANS = [
   {
     name: 'Premium',
     tagline: 'For people who swipe a lot',
-    perks: ['Unlimited likes', 'No ads', 'Everything in Free', 'Weekly with a free trial, monthly, yearly — or pay once and keep it forever'],
+    perks: ['Unlimited likes', 'No ads', 'Everything in Free', 'Weekly with a free trial, monthly — or pay once and keep it forever'],
     highlighted: true,
   },
 ]
