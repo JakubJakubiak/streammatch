@@ -37,7 +37,7 @@ const PLAN_NAMES: Record<PlanKind, string> = {
 // Shown only while the store is not connected, so the screen can be reviewed.
 // Real prices always come from the App Store / Google Play.
 const PREVIEW: [PlanKind, number, number | null][] = [
-  ['weekly', 14.99, 3],
+  ['weekly', 2.99, 3],
   ['monthly', 49.99, null],
   ['lifetime', 499, null],
 ];

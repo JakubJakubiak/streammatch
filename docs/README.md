@@ -234,7 +234,7 @@ a funkcje czatu dodatkowo to, czy należy on do danego dopasowania (`requireMatc
    (bundle id / package: `com.jakubjakubiak.streammatch`).
 2. W App Store Connect i Google Play Console utwórz trzy produkty: subskrypcję tygodniową
    (z darmowym okresem próbnym 3 dni jako ofertą wprowadzającą), subskrypcję miesięczną oraz
-   jednorazowy zakup „lifetime". Tu ustawiasz ceny, np. 14,99 / 49,99 / 499 $.
+   jednorazowy zakup „lifetime". Tu ustawiasz ceny, np. 2,99 / 49,99 / 499 $.
 3. W RevenueCat: entitlement o identyfikatorze **`premium`**, przypięte do niego te trzy
    produkty, oraz offering „default" z pakietami Weekly, Monthly i Lifetime. Aplikacja
    rozpoznaje plany po typie pakietu (gdybyś kiedyś dodał pakiet Annual, pokaże się sam).
