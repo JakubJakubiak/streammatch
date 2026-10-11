@@ -97,6 +97,10 @@ src/app/           screens (Expo Router)
 src/components/    swipe card, profile card, shared UI
 ```
 
+## Docs
+
+- [How nearby search works](docs/szukanie-w-okolicy.md) (in Polish)
+
 ## Checks
 
 ```bash
