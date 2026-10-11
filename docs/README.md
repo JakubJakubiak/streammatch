@@ -9,6 +9,7 @@ szukanie streamerów w okolicy, dopasowania i czat na żywo.
 - [Model danych](#model-danych)
 - [Funkcje backendu](#funkcje-backendu)
 - [Premium, limit polubień i reklamy](#premium-limit-polubień-i-reklamy)
+- [Publikacja w Google Play](#publikacja-w-google-play)
 - [Strona WWW](#strona-www)
 - [Konfiguracja](#konfiguracja)
 - [Budowanie i uruchamianie](#budowanie-i-uruchamianie)
@@ -66,15 +67,20 @@ Zrzuty z natywnej aplikacji iOS (symulator iPhone 17), na danych testowych.
 
 ### Premium i reklamy
 
-| Reklama w talii | Ekran Premium |
-|:-:|:-:|
-| <img src="images/11-ad.png" width="240"> | <img src="images/12-paywall.png" width="240"> |
-| `src/components/ad-card.tsx` | `src/app/paywall.tsx` |
+| Reklama w talii | Ekran Premium | Ekran Premium — plany |
+|:-:|:-:|:-:|
+| <img src="images/11-ad.png" width="240"> | <img src="images/12-paywall.png" width="240"> | <img src="images/13-paywall-bottom.png" width="240"> |
+| `src/components/ad-card.tsx` | `src/app/paywall.tsx` | |
 
 - **Licznik polubień** w prawym górnym rogu Discover; dotknięcie otwiera ekran Premium.
 - **Reklama** zajmuje co trzecią kartę u kont darmowych. Przesuwa się ją jak profil.
-- **Ekran Premium** — trzy plany: tygodniowy, roczny i „Forever" (jednorazowy). Ceny na zrzucie to
-  podgląd; prawdziwe zawsze pochodzą ze sklepu.
+- **Ekran Premium** — cztery plany: tygodniowy (z 3 dniami za darmo), miesięczny, roczny i
+  „Forever" (jednorazowy). Ceny na zrzucie to podgląd; prawdziwe zawsze pochodzą ze sklepu.
+- **Wyliczenia na planach** liczy aplikacja z cen ze sklepu: koszt tygodniowy każdego planu,
+  „SAVE x%" względem najdroższego planu w przeliczeniu na tydzień oraz po ilu miesiącach zwraca
+  się plan „Forever" w porównaniu z miesięcznym. Zmiana cen w sklepie sama zmienia te liczby.
+- **Darmowy okres próbny** aplikacja odczytuje ze sklepu (oferta wprowadzająca o cenie 0) i
+  pokazuje plakietkę „3 DAYS FREE" oraz przycisk „Start 3-day free trial".
 
 ## Architektura
 
@@ -223,11 +229,12 @@ a funkcje czatu dodatkowo to, czy należy on do danego dopasowania (`requireMatc
 
 1. Załóż projekt na revenuecat.com i dodaj aplikacje iOS oraz Android
    (bundle id / package: `com.jakubjakubiak.streammatch`).
-2. W App Store Connect i Google Play Console utwórz trzy produkty: subskrypcję tygodniową,
-   subskrypcję roczną i jednorazowy zakup „lifetime" (tu ustawiasz ceny, np. 499 $).
-3. W RevenueCat: entitlement o identyfikatorze **`premium`**, przypięte do niego te trzy produkty,
-   oraz offering „default" z pakietami Weekly, Annual i Lifetime. Aplikacja rozpoznaje plany po
-   typie pakietu.
+2. W App Store Connect i Google Play Console utwórz cztery produkty: subskrypcje tygodniową
+   (z darmowym okresem próbnym 3 dni jako ofertą wprowadzającą), miesięczną i roczną oraz
+   jednorazowy zakup „lifetime". Tu ustawiasz ceny, np. 14,99 / 49,99 / 299,99 / 499 $.
+3. W RevenueCat: entitlement o identyfikatorze **`premium`**, przypięte do niego te cztery
+   produkty, oraz offering „default" z pakietami Weekly, Monthly, Annual i Lifetime. Aplikacja
+   rozpoznaje plany po typie pakietu.
 4. Klucze publiczne SDK wpisz do `.env.local` i przebuduj aplikację:
 
    ```
@@ -258,6 +265,21 @@ npx convex run billing:grantPremium '{"userId": "<id użytkownika>", "days": 0}'
 
 Dopóki klucze SDK nie są ustawione, ekran Premium pokazuje przykładowe ceny z dopiskiem
 „Preview prices", a przycisk zakupu jest nieaktywny.
+
+## Publikacja w Google Play
+
+Google nie udostępnia własnego serwera MCP do Google Play. Istnieją tylko projekty
+społeczności, które wymagają pełnego klucza konta usługi do konsoli Play — nie zostały dodane.
+
+Publikację można zautomatyzować oficjalnym API (Android Publisher) przez Gradle Play Publisher
+albo fastlane. Do tego potrzebne są rzeczy, które zakłada się ręcznie:
+
+1. Konto dewelopera Google Play i utworzona w konsoli aplikacja `com.jakubjakubiak.streammatch`.
+2. Klucz podpisujący (upload keystore) i konfiguracja podpisu wersji release w `android/app/build.gradle`.
+3. Pierwszy plik `.aab` wgrany ręcznie w konsoli — API nie potrafi utworzyć pierwszego wydania.
+4. Konto usługi Google Cloud z dostępem do konsoli Play i jego klucz JSON (poza repozytorium).
+
+Po tych krokach jedno polecenie buduje i wysyła nową wersję na ścieżkę testów wewnętrznych.
 
 ## Strona WWW
 

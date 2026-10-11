@@ -1,6 +1,6 @@
 // In-app purchases only exist in the native apps.
-export type PlanKind = 'weekly' | 'annual' | 'lifetime' | 'other';
-export type Plan = { id: string; kind: PlanKind; price: string };
+export type PlanKind = 'weekly' | 'monthly' | 'annual' | 'lifetime' | 'other';
+export type Plan = { id: string; kind: PlanKind; price: string; amount: number; currency: string; trialDays: number | null };
 
 export const purchasesAvailable = false;
 export const manageSubscriptionUrl = 'https://play.google.com/store/account/subscriptions';

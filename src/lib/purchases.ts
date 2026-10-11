@@ -1,11 +1,22 @@
 import { Platform } from 'react-native';
 import Purchases, { type PurchasesPackage } from 'react-native-purchases';
 
-export type PlanKind = 'weekly' | 'annual' | 'lifetime' | 'other';
-export type Plan = { id: string; kind: PlanKind; price: string };
+export type PlanKind = 'weekly' | 'monthly' | 'annual' | 'lifetime' | 'other';
+export type Plan = {
+  id: string;
+  kind: PlanKind;
+  /** Localized price from the store, e.g. "$49.99". */
+  price: string;
+  /** The same price as a number, for comparing plans. */
+  amount: number;
+  currency: string;
+  /** Length of the free trial the store offers on this plan, if any. */
+  trialDays: number | null;
+};
 
 const KINDS: Record<string, PlanKind> = {
   WEEKLY: 'weekly',
+  MONTHLY: 'monthly',
   ANNUAL: 'annual',
   LIFETIME: 'lifetime',
 };
@@ -23,6 +34,15 @@ export const manageSubscriptionUrl = Platform.select({
   ios: 'https://apps.apple.com/account/subscriptions',
   default: 'https://play.google.com/store/account/subscriptions',
 });
+
+const DAYS_IN: Record<string, number> = { DAY: 1, WEEK: 7, MONTH: 30, YEAR: 365 };
+
+/** A free trial is an introductory offer that costs nothing. */
+function trialDaysOf(pkg: PurchasesPackage) {
+  const intro = pkg.product.introPrice;
+  if (!intro || intro.price !== 0) return null;
+  return intro.periodNumberOfUnits * (DAYS_IN[intro.periodUnit] ?? 0) || null;
+}
 
 let configured = false;
 const packages = new Map<string, PurchasesPackage>();
@@ -48,6 +68,9 @@ export async function loadPlans(): Promise<Plan[]> {
       id: pkg.identifier,
       kind: KINDS[pkg.packageType] ?? 'other',
       price: pkg.product.priceString,
+      amount: pkg.product.price,
+      currency: pkg.product.currencyCode,
+      trialDays: trialDaysOf(pkg),
     };
   });
 }

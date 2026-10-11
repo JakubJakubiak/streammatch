@@ -26,22 +26,91 @@ const BENEFITS = [
   { icon: 'rocket', title: 'Back the project', text: 'Help us ship new features faster.' },
 ] as const;
 
-const PLAN_COPY: Record<PlanKind, { name: string; note: string; badge?: string }> = {
-  weekly: { name: 'Weekly', note: 'Billed every week. Good for a test drive.' },
-  annual: { name: 'Yearly', note: 'Billed once a year.', badge: 'BEST VALUE' },
-  lifetime: { name: 'Forever', note: 'Pay once. Yours until the servers melt.', badge: 'LEGEND' },
-  other: { name: 'Premium', note: '' },
+const PLAN_NAMES: Record<PlanKind, string> = {
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+  annual: 'Yearly',
+  lifetime: 'Forever',
+  other: 'Premium',
 };
 
 // Shown only while the store is not connected, so the screen can be reviewed.
 // Real prices always come from the App Store / Google Play.
-const PREVIEW_PLANS: Plan[] = [
-  { id: 'preview_weekly', kind: 'weekly', price: '$4.99' },
-  { id: 'preview_annual', kind: 'annual', price: '$49.99' },
-  { id: 'preview_lifetime', kind: 'lifetime', price: '$499.00' },
+const PREVIEW: [PlanKind, number, number | null][] = [
+  ['weekly', 14.99, 3],
+  ['monthly', 49.99, null],
+  ['annual', 299.99, null],
+  ['lifetime', 499, null],
 ];
 
-const ORDER: PlanKind[] = ['weekly', 'annual', 'lifetime', 'other'];
+const ORDER: PlanKind[] = ['weekly', 'monthly', 'annual', 'lifetime', 'other'];
+
+const WEEKS_PER_YEAR = 52;
+/** How many weeks one payment of a renewing plan covers. */
+const WEEKS_COVERED: Partial<Record<PlanKind, number>> = {
+  weekly: 1,
+  monthly: WEEKS_PER_YEAR / 12,
+  annual: WEEKS_PER_YEAR,
+};
+
+const RENEWS: Partial<Record<PlanKind, string>> = {
+  weekly: 'per week',
+  monthly: 'per month',
+  annual: 'per year',
+};
+
+const perWeek = (plan: Plan) => {
+  const weeks = WEEKS_COVERED[plan.kind];
+  return weeks === undefined ? null : plan.amount / weeks;
+};
+
+const money = (amount: number, currency: string) =>
+  new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(amount);
+
+const PREVIEW_PLANS: Plan[] = PREVIEW.map(([kind, amount, trialDays]) => ({
+  id: `preview_${kind}`,
+  kind,
+  price: money(amount, 'USD'),
+  amount,
+  currency: 'USD',
+  trialDays,
+}));
+
+/**
+ * The small print and badge for a plan, worked out from the store prices:
+ * renewing plans are compared by cost per week against the priciest one,
+ * and the one-time plan against how long the monthly plan would take to cost the same.
+ */
+function describe(plan: Plan, plans: Plan[]): { note: string; badge?: string } {
+  if (plan.kind === 'lifetime') {
+    const monthly = plans.find((other) => other.kind === 'monthly');
+    const months = monthly ? Math.ceil(plan.amount / monthly.amount) : null;
+    return {
+      note:
+        months === null
+          ? 'One payment. No renewals, ever.'
+          : `One payment. Pays for itself after ${months} months.`,
+      badge: 'LEGEND',
+    };
+  }
+  const weekly = perWeek(plan);
+  if (weekly === null) return { note: '' };
+  const highest = Math.max(...plans.map((other) => perWeek(other) ?? 0));
+  const saving = Math.round((1 - weekly / highest) * 100);
+  if (plan.trialDays !== null) {
+    return {
+      note: `${plan.trialDays} days free, then ${plan.price} ${RENEWS[plan.kind] ?? ''}`.trim(),
+      badge: `${plan.trialDays} DAYS FREE`,
+    };
+  }
+  return {
+    note:
+      plan.kind === 'weekly'
+        ? 'Billed every week.'
+        : `${money(weekly, plan.currency)} per week`,
+    badge: saving > 0 ? `SAVE ${saving}%` : undefined,
+  };
+}
 
 const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
@@ -148,7 +217,7 @@ export default function Paywall() {
           ) : (
             <View accessibilityRole="radiogroup" style={styles.plans}>
               {plans.map((plan) => {
-                const copy = PLAN_COPY[plan.kind];
+                const copy = describe(plan, plans);
                 const isSelected = plan.id === selected;
                 return (
                   <Pressable
@@ -164,7 +233,7 @@ export default function Paywall() {
                     />
                     <View style={styles.planText}>
                       <View style={styles.planNameRow}>
-                        <Text style={styles.planName}>{copy.name}</Text>
+                        <Text style={styles.planName}>{PLAN_NAMES[plan.kind]}</Text>
                         {copy.badge !== undefined && (
                           <LinearGradient
                             colors={GRADIENT}
@@ -203,7 +272,11 @@ export default function Paywall() {
                     <ActivityIndicator color="#fff" />
                   ) : (
                     <Text style={styles.ctaLabel}>
-                      {chosen ? `Continue · ${chosen.price}` : 'Continue'}
+                      {chosen === undefined
+                        ? 'Continue'
+                        : chosen.trialDays !== null
+                          ? `Start ${chosen.trialDays}-day free trial`
+                          : `Continue · ${chosen.price}`}
                     </Text>
                   )}
                 </LinearGradient>
@@ -222,8 +295,9 @@ export default function Paywall() {
               </Pressable>
 
               <Text style={styles.legal}>
-                Weekly and yearly plans renew automatically until cancelled. Cancel any time in your
-                store account settings. The Forever plan is a one-time purchase.
+                Weekly, monthly and yearly plans renew automatically until cancelled. Cancel any time
+                in your store account settings. A free trial becomes a paid subscription unless cancelled
+                at least 24 hours before it ends. The Forever plan is a one-time purchase.
               </Text>
             </>
           )}
