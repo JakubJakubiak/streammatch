@@ -1,6 +1,10 @@
+import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 
 const OPENROUTER = "https://openrouter.ai/api/v1";
+// Jev is served by the Decisions API, not the chat completions endpoint.
+const DECISIONS = "https://openrouter.ai/api/alpha/decisions";
+const JEV = "typesafe/jev-1.13";
 
 /**
  * Checks that OPENROUTER_API_KEY is set and accepted, without revealing it.
@@ -27,5 +31,33 @@ export const checkKey = internalAction({
       usage: data.usage,
       freeTier: data.is_free_tier ?? null,
     };
+  },
+});
+
+/**
+ * Asks Jev (TypeSafe's decision model) a batch of questions about one state.
+ * Each question is `noul` (yes/no), `choice` (pick one of `criteria`) or
+ * `score` (position on an ordered `criteria` scale).
+ *
+ * Run with:
+ *   npx convex run ai:decide '{"state": "...", "questions": {"spam": {"type": "noul", "instructions": "Is this spam?"}}}'
+ */
+export const decide = internalAction({
+  args: { state: v.any(), questions: v.any() },
+  handler: async (_ctx, { state, questions }) => {
+    const key = process.env.OPENROUTER_API_KEY;
+    if (!key) throw new Error("OPENROUTER_API_KEY is not set");
+    const response = await fetch(DECISIONS, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ model: JEV, state, questions }),
+    });
+    if (!response.ok) {
+      throw new Error(`Jev request failed: ${response.status} ${await response.text()}`);
+    }
+    return await response.json();
   },
 });
