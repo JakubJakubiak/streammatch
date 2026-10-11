@@ -42,8 +42,15 @@ Every question has `type` and `instructions`. Keys are names you choose.
 }
 ```
 
-All questions in one call are judged against the same `state`. For a list of
-items, make one call per item with the same questions.
+All questions in one call are judged against the same `state`.
+
+For a list, ask the same questions about every item in one call:
+
+```bash
+npx convex run ai:decideMany '{"states": ["item one", "item two"], "questions": { ... }}'
+```
+
+It returns `answers` (one object per item, in order) and the total `cost`.
 
 ## Using it while driving a browser
 
@@ -53,6 +60,9 @@ Jev does not click or navigate. The pattern is:
 2. Split it into items and ask Jev the same closed questions about each.
 3. Act on the answers yourself, and still confirm with the user before anything
    that submits, publishes, sends or deletes.
+
+Inside a Playwright script (the `playwright` skill) the same calls are available
+as `jev.decide` and `jev.decideMany`, so collecting and judging happen in one run.
 
 Treat a `noul` between roughly 0.3 and 0.7, or a low `confidence`, as "unsure":
 look at that item yourself instead of trusting the answer.

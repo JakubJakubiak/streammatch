@@ -41,6 +41,35 @@ export default async ({ page, context, args }) => {
   scratchpad if they are one-off.
 - Uploads: `await page.setInputFiles('input[type=file]', '/absolute/path')`.
 
+## Decisions with Jev
+
+Every script also receives `jev`, the fast decision model (see the `jev` skill).
+Let the script collect the items and let Jev judge them, so no page text has to
+come back to you just to be sorted:
+
+```js
+export default async ({ page, args, jev }) => {
+  await page.goto(args[0]);
+  const rows = await page.locator('table tr').allTextContents();
+  const { answers, cost } = await jev.decideMany(rows, {
+    needsAction: { type: 'noul', instructions: 'Does this row report a problem that needs action?' },
+  });
+  return { cost, flagged: rows.filter((_, i) => answers[i].needsAction.noul > 0.7) };
+};
+```
+
+- `jev.decide(state, questions)` — one item; returns the answers.
+- `jev.decideMany(states, questions)` — the same questions for every item, in one
+  round trip; returns `{ answers, cost }`.
+- `jev.isSure(noul)` — false when a yes/no answer is too close to 50% to act on.
+  Return the unsure items and judge those yourself.
+
+Jev picks between options; it does not click. Use its answer to choose which
+branch the script takes (which option to select, which rows to open), never to
+decide on its own that something may be submitted or published.
+
+`example-triage.mjs` is a working example.
+
 ## The browser profile
 
 The runner uses the installed Google Chrome with its own profile in
@@ -66,5 +95,3 @@ Store, so existing sign-ins (2FA, SSO) are available. Its tools appear as
 - A script must stop before any step that submits, publishes, pays, sends or
   deletes on a real account. Show the user what is about to happen and get a
   yes first, then run the final step as a separate script.
-- Use Jev (the `jev` skill) when a script collects many items that each need a
-  yes/no or pick-one judgement.

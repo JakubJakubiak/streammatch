@@ -42,22 +42,44 @@ export const checkKey = internalAction({
  * Run with:
  *   npx convex run ai:decide '{"state": "...", "questions": {"spam": {"type": "noul", "instructions": "Is this spam?"}}}'
  */
+async function askJev(state: unknown, questions: unknown) {
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key) throw new Error("OPENROUTER_API_KEY is not set");
+  const response = await fetch(DECISIONS, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ model: JEV, state, questions }),
+  });
+  if (!response.ok) {
+    throw new Error(`Jev request failed: ${response.status} ${await response.text()}`);
+  }
+  return await response.json();
+}
+
 export const decide = internalAction({
   args: { state: v.any(), questions: v.any() },
-  handler: async (_ctx, { state, questions }) => {
-    const key = process.env.OPENROUTER_API_KEY;
-    if (!key) throw new Error("OPENROUTER_API_KEY is not set");
-    const response = await fetch(DECISIONS, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ model: JEV, state, questions }),
-    });
-    if (!response.ok) {
-      throw new Error(`Jev request failed: ${response.status} ${await response.text()}`);
-    }
-    return await response.json();
+  handler: async (_ctx, { state, questions }) => await askJev(state, questions),
+});
+
+/**
+ * Asks the same questions about each item of a list, in parallel.
+ * Returns one `answers` object per item, in order, plus the total cost.
+ *
+ * Run with:
+ *   npx convex run ai:decideMany '{"states": ["a", "b"], "questions": {...}}'
+ */
+export const decideMany = internalAction({
+  args: { states: v.array(v.any()), questions: v.any() },
+  handler: async (_ctx, { states, questions }) => {
+    const results = await Promise.all(
+      states.map((state) => askJev(state, questions)),
+    );
+    return {
+      answers: results.map((result) => result.answers),
+      cost: results.reduce((sum, result) => sum + (result.usage?.cost ?? 0), 0),
+    };
   },
 });
