@@ -3,6 +3,10 @@
     "revenuecat": {
       "type": "http",
       "url": "https://mcp.revenuecat.ai/mcp"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
     }
   }
 }
