@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import { cellOf, coarsen } from "./geo";
 import {
@@ -9,6 +10,7 @@ import {
   publicProfile,
   requireProfile,
 } from "./lib";
+import { moderationEnabled } from "./moderation";
 import { intent } from "./schema";
 
 const MAX_BIO = 300;
@@ -33,6 +35,7 @@ export const me = query({
       displayName: profile.displayName,
       avatarUrl: profile.avatarUrl ?? null,
       bio: profile.bio,
+      bioRemoved: profile.bioRemoved ?? false,
       tags: profile.tags,
       intent: profile.intent,
       followerCount: profile.followerCount ?? null,
@@ -73,7 +76,10 @@ export const update = mutation({
       throw new ConvexError("Distance must be positive");
     }
     await ctx.db.patch(profile._id, {
-      ...(args.bio !== undefined && { bio: args.bio.trim().slice(0, MAX_BIO) }),
+      ...(args.bio !== undefined && {
+        bio: args.bio.trim().slice(0, MAX_BIO),
+        bioRemoved: undefined,
+      }),
       ...(args.tags !== undefined && { tags: cleanTags(args.tags) }),
       ...(args.intent !== undefined && { intent: args.intent }),
       ...(args.maxDistanceKm !== undefined && {
@@ -85,6 +91,11 @@ export const update = mutation({
       ...(args.confirmAdult === true && { onboarded: true }),
       lastActiveAt: Date.now(),
     });
+    if (args.bio !== undefined && args.bio.trim() !== "" && moderationEnabled()) {
+      await ctx.scheduler.runAfter(0, internal.moderation.checkBio, {
+        userId: profile.userId,
+      });
+    }
   },
 });
 

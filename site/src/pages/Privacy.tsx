@@ -45,7 +45,10 @@ export function Privacy() {
           <li>To show your profile to other members and theirs to you.</li>
           <li>To find people near you and order the deck.</li>
           <li>To deliver matches and messages.</li>
-          <li>To keep the service safe, including reviewing reports.</li>
+          <li>
+            To keep the service safe, including reviewing reports and automatically checking
+            messages and bios before they are shown to others.
+          </li>
           <li>To unlock Premium features you paid for.</li>
         </ul>
         <p className="mt-3">We do not sell your personal data.</p>
@@ -57,6 +60,11 @@ export function Privacy() {
           <li><strong>Convex</strong> — database and backend hosting.</li>
           <li><strong>Twitch</strong> — sign-in and public channel data.</li>
           <li><strong>RevenueCat, Apple and Google</strong> — subscription status and payments.</li>
+          <li>
+            <strong>OpenRouter and TypeSafe</strong> — automated moderation. The text of messages and
+            bios is checked for harassment, scams and signs of underage use. No names or account
+            identifiers are sent.
+          </li>
         </ul>
       </section>
 

@@ -74,6 +74,11 @@ export default function Profile() {
           />
         )}
 
+        {me.bioRemoved && (
+          <Text style={styles.warning}>
+            Your bio was removed because it broke our rules. Please write a new one.
+          </Text>
+        )}
         <ProfileForm draft={current} onChange={setDraft} />
         {draft !== null && <Button label="Save changes" onPress={save} busy={saving} />}
 
@@ -164,6 +169,7 @@ const styles = StyleSheet.create({
   headerText: { flex: 1, gap: Spacing.xs },
   name: { color: Colors.text, fontSize: 24, fontWeight: '800' },
   muted: { color: Colors.textMuted, fontSize: 14, lineHeight: 19 },
+  warning: { color: Colors.pass, fontSize: 14, lineHeight: 19 },
   panel: {
     padding: Spacing.md,
     gap: Spacing.md,

@@ -19,6 +19,7 @@ import type * as http from "../http.js";
 import type * as lib from "../lib.js";
 import type * as matches from "../matches.js";
 import type * as messages from "../messages.js";
+import type * as moderation from "../moderation.js";
 import type * as profiles from "../profiles.js";
 import type * as safety from "../safety.js";
 import type * as seed from "../seed.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   lib: typeof lib;
   matches: typeof matches;
   messages: typeof messages;
+  moderation: typeof moderation;
   profiles: typeof profiles;
   safety: typeof safety;
   seed: typeof seed;

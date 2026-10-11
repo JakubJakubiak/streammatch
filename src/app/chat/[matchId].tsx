@@ -77,8 +77,18 @@ export default function Chat() {
             keyExtractor={(message) => message.id}
             contentContainerStyle={styles.list}
             renderItem={({ item }) => (
-              <View style={[styles.bubble, item.mine ? styles.mine : styles.theirs]}>
-                <Text style={styles.bubbleText}>{item.body}</Text>
+              <View style={item.mine ? styles.mineRow : styles.theirsRow}>
+                <View
+                  style={[
+                    styles.bubble,
+                    item.mine ? styles.mine : styles.theirs,
+                    item.blocked && styles.blocked,
+                  ]}>
+                  <Text style={styles.bubbleText}>{item.body}</Text>
+                </View>
+                {item.blocked && (
+                  <Text style={styles.blockedNote}>Not delivered. This message broke our rules.</Text>
+                )}
               </View>
             )}
           />
@@ -137,14 +147,18 @@ const styles = StyleSheet.create({
   headerProfile: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   headerName: { color: Colors.text, fontSize: 17, fontWeight: '700', flexShrink: 1 },
   list: { padding: Spacing.md, gap: Spacing.sm },
+  mineRow: { alignItems: 'flex-end', gap: 2 },
+  theirsRow: { alignItems: 'flex-start' },
+  blocked: { backgroundColor: Colors.surfaceRaised, opacity: 0.6 },
+  blockedNote: { color: Colors.pass, fontSize: 12 },
   bubble: {
     maxWidth: '80%',
     paddingVertical: Spacing.sm,
     paddingHorizontal: 14,
     borderRadius: 18,
   },
-  mine: { alignSelf: 'flex-end', backgroundColor: Colors.primary, borderBottomRightRadius: 4 },
-  theirs: { alignSelf: 'flex-start', backgroundColor: Colors.surfaceRaised, borderBottomLeftRadius: 4 },
+  mine: { backgroundColor: Colors.primary, borderBottomRightRadius: 4 },
+  theirs: { backgroundColor: Colors.surfaceRaised, borderBottomLeftRadius: 4 },
   bubbleText: { color: Colors.text, fontSize: 16, lineHeight: 21 },
   composer: {
     flexDirection: 'row',

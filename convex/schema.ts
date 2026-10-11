@@ -54,6 +54,8 @@ export default defineSchema({
     onboarded: v.boolean(),
     lastActiveAt: v.number(),
     isDemo: v.optional(v.boolean()),
+    // Set when moderation removed the bio, until the user saves a new one.
+    bioRemoved: v.optional(v.boolean()),
   })
     .index("by_user", ["userId"])
     .index("by_cell", ["cell"])
@@ -86,6 +88,9 @@ export default defineSchema({
     matchId: v.id("matches"),
     senderId: v.id("users"),
     body: v.string(),
+    // Absent = delivered. "pending" waits for moderation and is visible only
+    // to the sender; "blocked" was refused and never reaches the recipient.
+    status: v.optional(v.union(v.literal("pending"), v.literal("blocked"))),
   }).index("by_match", ["matchId"]),
 
   blocks: defineTable({
@@ -96,7 +101,8 @@ export default defineSchema({
     .index("by_blocked", ["blockedId"]),
 
   reports: defineTable({
-    reporterId: v.id("users"),
+    // Absent when the report was filed by automatic moderation.
+    reporterId: v.optional(v.id("users")),
     reportedId: v.id("users"),
     reason: v.string(),
   }).index("by_reported", ["reportedId"]),

@@ -9,6 +9,7 @@ szukanie streamerów w okolicy, dopasowania i czat na żywo.
 - [Model danych](#model-danych)
 - [Funkcje backendu](#funkcje-backendu)
 - [Premium, limit polubień i reklamy](#premium-limit-polubień-i-reklamy)
+- [Automatyczna moderacja](#automatyczna-moderacja)
 - [Publikacja w Google Play](#publikacja-w-google-play)
 - [Strona WWW](#strona-www)
 - [Konfiguracja](#konfiguracja)
@@ -196,6 +197,8 @@ mają dokładnie jeden wiersz.
 | | `refresh` | pyta RevenueCat o uprawnienie zaraz po zakupie |
 | | `revenueCatWebhook` | przyjmuje zdarzenia zakupów, odnowień i wygaśnięć |
 | | `grantPremium` | ręczne nadanie Premium do testów |
+| `moderation.ts` | `checkMessage`, `checkBio` | automatyczna moderacja wiadomości i bio |
+| `ai.ts` | `checkKey`, `decide` | test klucza OpenRouter; zapytanie do modelu Jev |
 | `seed.ts` | `run`, `demoChat` | dane testowe |
 
 Każda publiczna funkcja sprawdza zalogowanego użytkownika (`requireProfile` w `convex/lib.ts`),
@@ -266,6 +269,38 @@ npx convex run billing:grantPremium '{"userId": "<id użytkownika>", "days": 0}'
 Dopóki klucze SDK nie są ustawione, ekran Premium pokazuje przykładowe ceny z dopiskiem
 „Preview prices", a przycisk zakupu jest nieaktywny.
 
+## Automatyczna moderacja
+
+<img src="images/14-moderation.png" width="240">
+
+Wiadomości czatu i bio sprawdza Jev — szybki model decyzyjny TypeSafe dostępny przez OpenRouter
+(`convex/moderation.ts`). Jedno sprawdzenie trwa ok. sekundy i kosztuje ok. 0,00002 $.
+
+**Trzy reguły** (pytania tak/nie do modelu): nękanie i groźby (`abuse`), spam, reklama i prośby
+o pieniądze (`scam`), oznaki niepełnoletności (`minor`). Reguła jest złamana, gdy model jest pewny
+w co najmniej 85% (`BLOCK_AT`).
+
+**Wiadomości**
+
+1. `messages.send` zapisuje wiadomość ze statusem `pending` — widzi ją tylko nadawca.
+2. Akcja `moderation.checkMessage` pyta Jev.
+3. Jeśli jest w porządku: wiadomość trafia do odbiorcy, a podgląd i licznik nieprzeczytanych
+   aktualizują się dopiero teraz.
+4. Jeśli łamie regułę: status `blocked`. Odbiorca nigdy jej nie zobaczy, nadawca widzi ją wyszarzoną
+   z dopiskiem „Not delivered", a w tabeli `reports` powstaje automatyczne zgłoszenie z powodem
+   (np. `auto (message): scam 0.99`).
+
+**Bio** — sprawdzane po zapisaniu. Bio łamiące reguły jest czyszczone, użytkownik widzi w profilu
+komunikat, a zgłoszenie trafia do `reports`.
+
+**Zasady działania**
+
+- Moderacja włącza się sama, gdy na serwerze jest `OPENROUTER_API_KEY`. Bez klucza wiadomości
+  są dostarczane od razu, jak wcześniej.
+- Gdy Jev jest niedostępny, nic nie jest blokowane (lepiej przepuścić niż zatrzymać czat).
+- Do modelu trafia wyłącznie treść wiadomości lub bio — bez nazw i identyfikatorów użytkowników.
+- Test ręczny: `npx convex run ai:decide '{"state": "...", "questions": {...}}'`.
+
 ## Publikacja w Google Play
 
 Google nie udostępnia własnego serwera MCP do Google Play. Istnieją tylko projekty
@@ -314,6 +349,7 @@ Zmienne środowiskowe **Convex** (`npx convex env set NAZWA wartość`):
 | `DEMO_LOGIN` | `true` włącza konta demo bez hasła — tylko do testów | ręcznie |
 | `REVENUECAT_SECRET_KEY` | sprawdzanie zakupu zaraz po płatności | RevenueCat → API keys |
 | `REVENUECAT_WEBHOOK_AUTH` | hasło webhooka RevenueCat | wymyślasz sam |
+| `OPENROUTER_API_KEY` | włącza automatyczną moderację (model Jev) | openrouter.ai/keys |
 
 Plik `.env.local` w projekcie (tworzy go `npx convex dev`, nie trafia do gita):
 
@@ -370,7 +406,7 @@ npx convex run seed:demoChat                              # przykładowa rozmowa
 - **Lokalizacja** jest zaokrąglana do ok. 1 km przed zapisem; inni widzą tylko dystans w km.
 - **18+** — bez potwierdzenia nie da się wyjść z onboardingu.
 - **Blokada** działa w obie strony: zablokowane osoby nie widzą się w talii, w Nearby ani w profilu.
-- **Zgłoszenia** zapisują się w tabeli `reports`.
+- **Zgłoszenia** zapisują się w tabeli `reports` — ręczne oraz automatyczne z moderacji.
 - **Usunięcie konta** (Profil → Delete account) kasuje wszystkie dane użytkownika, łącznie z rozmowami i zapisem Premium. Nie anuluje subskrypcji w sklepie — aplikacja o tym ostrzega.
 - **Edycja danych** — bio, cel, zainteresowania i ustawienia zmienia się w zakładce Profil.
 - **Limity treści:** bio 300 znaków, wiadomość 1000 znaków, 8 zainteresowań.
