@@ -1,6 +1,7 @@
 import { useAuthActions } from '@convex-dev/auth/react';
 import { useMutation, useQuery } from 'convex/react';
 import * as Linking from 'expo-linking';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
@@ -8,10 +9,12 @@ import { ProfileForm, type ProfileDraft } from '@/components/profile-form';
 import { Avatar, Button, Chip, Loading, Screen } from '@/components/ui';
 import { DISTANCES, distanceLabel } from '@/constants/options';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { useBilling } from '@/hooks/use-billing';
 import { useLocation } from '@/hooks/use-location';
 import { api } from '@/lib/api';
 import { confirm } from '@/lib/confirm';
 import { compactNumber, twitchUrl } from '@/lib/format';
+import { manageSubscriptionUrl } from '@/lib/purchases';
 
 export default function Profile() {
   const me = useQuery(api.profiles.me);
@@ -20,6 +23,7 @@ export default function Profile() {
   const deleteAccount = useMutation(api.profiles.deleteAccount);
   const { signOut } = useAuthActions();
   const location = useLocation();
+  const billing = useBilling();
 
   const [draft, setDraft] = useState<ProfileDraft | null>(null);
   const [saving, setSaving] = useState(false);
@@ -40,7 +44,9 @@ export default function Profile() {
   const remove = async () => {
     const confirmed = await confirm(
       'Delete account?',
-      'Your profile, matches and messages will be permanently removed.',
+      billing.isPremium
+        ? 'Your profile, matches and messages will be permanently removed. This does not cancel your Premium subscription — cancel it in your store account first.'
+        : 'Your profile, matches and messages will be permanently removed.',
       'Delete',
     );
     if (confirmed) await deleteAccount();
@@ -70,6 +76,33 @@ export default function Profile() {
 
         <ProfileForm draft={current} onChange={setDraft} />
         {draft !== null && <Button label="Save changes" onPress={save} busy={saving} />}
+
+        <View style={styles.panel}>
+          <Text style={styles.panelTitle}>Premium</Text>
+          {billing.isPremium ? (
+            <>
+              <Text style={styles.muted}>
+                {billing.premiumUntil === Number.MAX_SAFE_INTEGER
+                  ? 'Forever plan'
+                  : `Active until ${new Date(billing.premiumUntil ?? 0).toLocaleDateString()}`}
+                . Unlimited likes, no ads.
+              </Text>
+              <Button
+                label="Manage subscription"
+                variant="secondary"
+                onPress={() => void Linking.openURL(manageSubscriptionUrl)}
+              />
+            </>
+          ) : (
+            <>
+              <Text style={styles.muted}>
+                {billing.likesLeft ?? 0} of your free likes left today. Go Premium for unlimited
+                likes and no ads.
+              </Text>
+              <Button label="Get Premium" icon="star" onPress={() => router.push('/paywall')} />
+            </>
+          )}
+        </View>
 
         <View style={styles.panel}>
           <Text style={styles.panelTitle}>Discovery</Text>

@@ -170,6 +170,14 @@ export const deleteAccount = mutation({
     ];
     for (const block of blocks) await ctx.db.delete(block._id);
 
+    for (const table of ["subscriptions", "likeUsage"] as const) {
+      const rows = await ctx.db
+        .query(table)
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect();
+      for (const row of rows) await ctx.db.delete(row._id);
+    }
+
     const sessions = await ctx.db
       .query("authSessions")
       .withIndex("userId", (q) => q.eq("userId", userId))

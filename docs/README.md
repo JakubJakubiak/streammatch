@@ -8,6 +8,8 @@ szukanie streamerów w okolicy, dopasowania i czat na żywo.
 - [Logowanie przez Twitch](#logowanie-przez-twitch)
 - [Model danych](#model-danych)
 - [Funkcje backendu](#funkcje-backendu)
+- [Premium, limit polubień i reklamy](#premium-limit-polubień-i-reklamy)
+- [Strona WWW](#strona-www)
 - [Konfiguracja](#konfiguracja)
 - [Budowanie i uruchamianie](#budowanie-i-uruchamianie)
 - [Dane testowe](#dane-testowe)
@@ -61,6 +63,18 @@ Zrzuty z natywnej aplikacji iOS (symulator iPhone 17), na danych testowych.
 - **Czat** — wiadomości pojawiają się natychmiast u obu stron, bez odświeżania.
 - **Profil** — edycja bio, celu i zainteresowań, maksymalny dystans, przełącznik lokalizacji,
   ukrycie profilu, wylogowanie i trwałe usunięcie konta.
+
+### Premium i reklamy
+
+| Reklama w talii | Ekran Premium |
+|:-:|:-:|
+| <img src="images/11-ad.png" width="240"> | <img src="images/12-paywall.png" width="240"> |
+| `src/components/ad-card.tsx` | `src/app/paywall.tsx` |
+
+- **Licznik polubień** w prawym górnym rogu Discover; dotknięcie otwiera ekran Premium.
+- **Reklama** zajmuje co trzecią kartę u kont darmowych. Przesuwa się ją jak profil.
+- **Ekran Premium** — trzy plany: tygodniowy, roczny i „Forever" (jednorazowy). Ceny na zrzucie to
+  podgląd; prawdziwe zawsze pochodzą ze sklepu.
 
 ## Architektura
 
@@ -145,6 +159,8 @@ erDiagram
 | `messages` | wiadomości czatu | `matchId`, `senderId`, `body` |
 | `blocks` | blokady | `blockerId`, `blockedId` |
 | `reports` | zgłoszenia | `reporterId`, `reportedId`, `reason` |
+| `subscriptions` | kto ma Premium | `userId`, `premiumUntil`, `productId`, `store` |
+| `likeUsage` | dzienny licznik polubień | `userId`, `day`, `likes` |
 | `twitchAppTokens` | pamięć podręczna tokenu aplikacji Twitcha | `accessToken`, `expiresAt` |
 
 Do tego tabele sesji z Convex Auth (`authAccounts`, `authSessions`, `authRefreshTokens` i inne).
@@ -170,10 +186,98 @@ mają dokładnie jeden wiersz.
 | `safety.ts` | `block`, `report` | blokada (usuwa też dopasowanie); zgłoszenie |
 | `twitch.ts` | `syncUser` | pobiera dane kanału po logowaniu |
 | | `refreshLive` | cron: status live dla do 1000 ostatnio aktywnych profili |
+| `billing.ts` | `status` | stan Premium i wykorzystane polubienia |
+| | `refresh` | pyta RevenueCat o uprawnienie zaraz po zakupie |
+| | `revenueCatWebhook` | przyjmuje zdarzenia zakupów, odnowień i wygaśnięć |
+| | `grantPremium` | ręczne nadanie Premium do testów |
 | `seed.ts` | `run`, `demoChat` | dane testowe |
 
 Każda publiczna funkcja sprawdza zalogowanego użytkownika (`requireProfile` w `convex/lib.ts`),
 a funkcje czatu dodatkowo to, czy należy on do danego dopasowania (`requireMatch`).
+
+## Premium, limit polubień i reklamy
+
+| | Konto darmowe | Premium |
+|---|---|---|
+| Polubienia | 20 dziennie (reset o północy UTC) | bez limitu |
+| Pominięcia | bez limitu | bez limitu |
+| Reklamy | co trzecia karta w talii | brak |
+| Dopasowania i czat | bez limitu | bez limitu |
+
+**Jak to działa**
+
+- Limit pilnuje serwer: `spendLike()` w `convex/billing.ts` jest wołane z `swipes.swipe` i przy
+  wyczerpaniu rzuca błąd `LIKE_LIMIT`. Aplikacja tylko pokazuje licznik i otwiera ekran Premium.
+  Zmiana limitu: stała `FREE_DAILY_LIKES`.
+- Liczy się tylko nowe polubienie; pominięcia i ponowne polubienie tej samej osoby nie.
+- Reklamy wstawia aplikacja (`AD_EVERY` w `src/app/(tabs)/index.tsx`). Karta reklamowa to na razie
+  własna reklama Premium — w `ad-card.tsx` można w to miejsce wstawić widok sieci reklamowej
+  (np. natywną reklamę AdMob) bez zmian w logice talii.
+- O tym, kto ma Premium, decyduje tabela `subscriptions` (`premiumUntil`). Zapisują do niej tylko:
+  webhook RevenueCat (`/revenuecat/webhook`) oraz akcja `billing.refresh`, którą aplikacja woła
+  zaraz po zakupie, żeby nie czekać na webhook. Aplikacja sama nie może sobie nadać Premium.
+- Plan „Forever" nie ma daty wygaśnięcia; zwrot pieniędzy za niego (zdarzenie `CANCELLATION`)
+  odbiera Premium.
+
+**Uruchomienie płatności (RevenueCat)** — do zrobienia na Twoich kontach:
+
+1. Załóż projekt na revenuecat.com i dodaj aplikacje iOS oraz Android
+   (bundle id / package: `com.jakubjakubiak.streammatch`).
+2. W App Store Connect i Google Play Console utwórz trzy produkty: subskrypcję tygodniową,
+   subskrypcję roczną i jednorazowy zakup „lifetime" (tu ustawiasz ceny, np. 499 $).
+3. W RevenueCat: entitlement o identyfikatorze **`premium`**, przypięte do niego te trzy produkty,
+   oraz offering „default" z pakietami Weekly, Annual i Lifetime. Aplikacja rozpoznaje plany po
+   typie pakietu.
+4. Klucze publiczne SDK wpisz do `.env.local` i przebuduj aplikację:
+
+   ```
+   EXPO_PUBLIC_REVENUECAT_IOS_KEY=appl_...
+   EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=goog_...
+   ```
+
+5. Na serwerze ustaw klucz tajny (do `billing.refresh`) i hasło webhooka:
+
+   ```bash
+   npx convex env set REVENUECAT_SECRET_KEY <tajny klucz API v1>
+   npx convex env set REVENUECAT_WEBHOOK_AUTH <dowolny długi losowy ciąg>
+   ```
+
+6. W RevenueCat → Integrations → Webhooks: adres
+   `https://<deployment>.convex.site/revenuecat/webhook`, a w polu „Authorization header" ten sam
+   ciąg co w `REVENUECAT_WEBHOOK_AUTH`.
+
+Kroki 1 i 3 można zrobić z Claude Code przez serwer MCP RevenueCat — jest wpisany w `.mcp.json`.
+Przy pierwszym użyciu poprosi o zalogowanie do RevenueCat w przeglądarce (polecenie `/mcp`).
+
+**Test bez sklepu:**
+
+```bash
+npx convex run billing:grantPremium '{"userId": "<id użytkownika>", "days": 30}'   # nadaj
+npx convex run billing:grantPremium '{"userId": "<id użytkownika>", "days": 0}'    # odbierz
+```
+
+Dopóki klucze SDK nie są ustawione, ekran Premium pokazuje przykładowe ceny z dopiskiem
+„Preview prices", a przycisk zakupu jest nieaktywny.
+
+## Strona WWW
+
+Folder [`site/`](../site) — strona promocyjna w React + Tailwind CSS (Vite), niezależna od aplikacji.
+
+- Strona główna: nagłówek ze zrzutami aplikacji, funkcje, „jak to działa", plany, FAQ.
+- Podstrony wymagane przez sklepy: **Privacy Policy**, **Terms of Use** i **Delete your account**
+  (Google Play wymaga publicznego adresu z instrukcją usunięcia konta).
+- Rzeczy do podmiany przed publikacją są w jednym pliku, `site/src/site.ts`: adres e-mail,
+  linki do sklepów (puste = „Coming soon").
+
+```bash
+cd site
+npm install
+npm run dev       # podgląd na http://localhost:5173
+npm run build     # gotowe pliki statyczne w site/dist
+```
+
+Teksty polityki prywatności i regulaminu opisują faktyczne działanie aplikacji, ale są szkicem —
+przed publikacją powinien je przejrzeć prawnik.
 
 ## Konfiguracja
 
@@ -186,6 +290,8 @@ Zmienne środowiskowe **Convex** (`npx convex env set NAZWA wartość`):
 | `JWT_PRIVATE_KEY`, `JWKS` | podpisywanie tokenów sesji | `npx @convex-dev/auth` |
 | `SITE_URL` | adres wersji web (powrót po logowaniu) | np. `http://localhost:8081` |
 | `DEMO_LOGIN` | `true` włącza konta demo bez hasła — tylko do testów | ręcznie |
+| `REVENUECAT_SECRET_KEY` | sprawdzanie zakupu zaraz po płatności | RevenueCat → API keys |
+| `REVENUECAT_WEBHOOK_AUTH` | hasło webhooka RevenueCat | wymyślasz sam |
 
 Plik `.env.local` w projekcie (tworzy go `npx convex dev`, nie trafia do gita):
 
@@ -193,6 +299,7 @@ Plik `.env.local` w projekcie (tworzy go `npx convex dev`, nie trafia do gita):
 |---|---|
 | `CONVEX_DEPLOYMENT` | na który deployment wgrywa `npx convex dev` |
 | `EXPO_PUBLIC_CONVEX_URL` | adres backendu, z którym łączy się aplikacja |
+| `EXPO_PUBLIC_REVENUECAT_IOS_KEY`, `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` | publiczne klucze SDK RevenueCat (dopisujesz ręcznie) |
 
 W konsoli Twitcha musi być wpisany adres zwrotny:
 
@@ -242,7 +349,8 @@ npx convex run seed:demoChat                              # przykładowa rozmowa
 - **18+** — bez potwierdzenia nie da się wyjść z onboardingu.
 - **Blokada** działa w obie strony: zablokowane osoby nie widzą się w talii, w Nearby ani w profilu.
 - **Zgłoszenia** zapisują się w tabeli `reports`.
-- **Usunięcie konta** kasuje wszystkie dane użytkownika, łącznie z rozmowami.
+- **Usunięcie konta** (Profil → Delete account) kasuje wszystkie dane użytkownika, łącznie z rozmowami i zapisem Premium. Nie anuluje subskrypcji w sklepie — aplikacja o tym ostrzega.
+- **Edycja danych** — bio, cel, zainteresowania i ustawienia zmienia się w zakładce Profil.
 - **Limity treści:** bio 300 znaków, wiadomość 1000 znaków, 8 zainteresowań.
 
 ## Znane braki
@@ -252,5 +360,7 @@ npx convex run seed:demoChat                              # przykładowa rozmowa
 - Brak powiadomień push.
 - Brak ograniczenia liczby wiadomości i polubień na minutę.
 - Interfejs tylko po angielsku.
-- Android: build przechodzi, ale aplikacja nie była jeszcze uruchamiana na emulatorze.
+- Android: build przechodzi (także z modułem płatności), ale aplikacja nie była jeszcze uruchamiana — na tym Macu nie ma emulatora.
+- Płatności: kod jest gotowy, ale zakup w sklepie nie był testowany (brak konta RevenueCat i produktów).
+- Reklamy: jest miejsce na reklamę, sieć reklamowa nie jest podłączona.
 - Ikona i nazwa „StreamMatch" są robocze.

@@ -10,6 +10,7 @@
 
 import type * as app from "../app.js";
 import type * as auth from "../auth.js";
+import type * as billing from "../billing.js";
 import type * as crons from "../crons.js";
 import type * as discover from "../discover.js";
 import type * as geo from "../geo.js";
@@ -32,6 +33,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   app: typeof app;
   auth: typeof auth;
+  billing: typeof billing;
   crons: typeof crons;
   discover: typeof discover;
   geo: typeof geo;

@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation } from "./_generated/server";
+import { spendLike } from "./billing";
 import {
   blockedIds,
   matchBetween,
@@ -25,6 +26,8 @@ export const swipe = mutation({
         q.eq("fromId", me.userId).eq("toId", toId),
       )
       .unique();
+    // Only a new like counts against the free daily allowance.
+    if (liked && !existing?.liked) await spendLike(ctx, me.userId);
     if (existing === null) {
       await ctx.db.insert("swipes", { fromId: me.userId, toId, liked });
     } else {

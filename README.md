@@ -29,6 +29,8 @@ Full documentation with screenshots and diagrams (in Polish): [docs/README.md](d
 - Mutual likes create a match; realtime chat with unread badges
 - Profile: bio, intent (friends / collabs / dating), interests, distance, visibility
 - Safety: 18+ confirmation, block, report, unmatch, full account deletion
+- Premium via RevenueCat (weekly, yearly, lifetime): free accounts get 20 likes a day and an ad as every third card
+- Marketing site with privacy, terms and account-deletion pages in [`site/`](site) (React + Tailwind)
 - Location is rounded to ~1 km before it is stored, and other users only ever see a distance
 
 ## Setup

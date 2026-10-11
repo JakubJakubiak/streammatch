@@ -10,6 +10,7 @@ import { Loading } from '@/components/ui';
 import { Colors } from '@/constants/theme';
 import { api } from '@/lib/api';
 import { convex, tokenStorage } from '@/lib/convex';
+import { identify } from '@/lib/purchases';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -40,6 +41,12 @@ function RootNavigator() {
     if (isAuthenticated && me === null) void signOut();
   }, [isAuthenticated, me, signOut]);
 
+  // Purchases are made under our user id so the backend can match them.
+  const userId = me?.userId;
+  useEffect(() => {
+    if (userId) void identify(userId).catch(() => {});
+  }, [userId]);
+
   if (!ready) return <Loading />;
 
   const signedIn = isAuthenticated && me != null;
@@ -57,6 +64,7 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="chat/[matchId]" />
         <Stack.Screen name="user/[userId]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
       </Stack.Protected>
     </Stack>
   );

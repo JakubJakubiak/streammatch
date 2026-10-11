@@ -101,6 +101,21 @@ export default defineSchema({
     reason: v.string(),
   }).index("by_reported", ["reportedId"]),
 
+  // Premium access, written only by the RevenueCat webhook and refresh action.
+  subscriptions: defineTable({
+    userId: v.id("users"),
+    premiumUntil: v.number(),
+    productId: v.optional(v.string()),
+    store: v.optional(v.string()),
+  }).index("by_user", ["userId"]),
+
+  // Likes used on `day` (UTC, YYYY-MM-DD). One row per user, reset lazily.
+  likeUsage: defineTable({
+    userId: v.id("users"),
+    day: v.string(),
+    likes: v.number(),
+  }).index("by_user", ["userId"]),
+
   twitchAppTokens: defineTable({
     accessToken: v.string(),
     expiresAt: v.number(),
