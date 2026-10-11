@@ -115,3 +115,56 @@ export const run = internalMutation({
     return { created, total: NAMES.length };
   },
 });
+
+const DEMO_CHAT = [
+  { fromDemo: false, body: "Hey! Caught your stream last night, that clutch was wild" },
+  { fromDemo: true, body: "Haha thanks! Pure luck, my hands were shaking" },
+  { fromDemo: false, body: "Up for a duo queue this weekend?" },
+  { fromDemo: true, body: "Yes! Saturday evening works. I'll be live from 19:00" },
+];
+
+/**
+ * Replaces the messages of every match with a demo streamer by a short
+ * scripted conversation, so chats are not one-sided while testing.
+ * Run with: npx convex run seed:demoChat
+ */
+export const demoChat = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let chats = 0;
+    for (const match of await ctx.db.query("matches").collect()) {
+      const profiles = await Promise.all(
+        [match.userA, match.userB].map((userId) =>
+          ctx.db
+            .query("profiles")
+            .withIndex("by_user", (q) => q.eq("userId", userId))
+            .unique(),
+        ),
+      );
+      const demo = profiles.find((p) => p?.isDemo);
+      const real = profiles.find((p) => p && !p.isDemo);
+      if (!demo || !real) continue;
+
+      const old = await ctx.db
+        .query("messages")
+        .withIndex("by_match", (q) => q.eq("matchId", match._id))
+        .collect();
+      for (const message of old) await ctx.db.delete(message._id);
+      for (const line of DEMO_CHAT) {
+        await ctx.db.insert("messages", {
+          matchId: match._id,
+          senderId: line.fromDemo ? demo.userId : real.userId,
+          body: line.body,
+        });
+      }
+      const last = DEMO_CHAT[DEMO_CHAT.length - 1];
+      await ctx.db.patch(match._id, {
+        lastMessageAt: Date.now(),
+        lastMessageText: last.body,
+        lastSenderId: last.fromDemo ? demo.userId : real.userId,
+      });
+      chats++;
+    }
+    return { chats };
+  },
+});

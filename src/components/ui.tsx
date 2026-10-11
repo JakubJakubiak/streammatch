@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.sm,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
   },
   liveLabel: { color: '#fff', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
 });

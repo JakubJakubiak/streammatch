@@ -6,6 +6,15 @@ streamers, find the ones near you, match and chat in real time.
 A from-scratch rewrite of [Tinder_Twitch](https://github.com/JakubJakubiak/Tinder_Twitch)
 (React Native 0.73 + Firebase), which is kept as the legacy version.
 
+<p>
+  <img src="docs/images/04-discover.png" width="200">
+  <img src="docs/images/08-nearby.png" width="200">
+  <img src="docs/images/05-match.png" width="200">
+  <img src="docs/images/06-chat.png" width="200">
+</p>
+
+Full documentation with screenshots and diagrams (in Polish): [docs/README.md](docs/README.md).
+
 ## Stack
 
 - **App:** React Native 0.86 with native `ios/` and `android/` projects, Expo Router, Reanimated 4
@@ -74,6 +83,7 @@ npx convex env set AUTH_TWITCH_SECRET <client secret>
 ```bash
 npx convex env set DEMO_LOGIN true                        # adds a "Try a demo account" button
 npx convex run seed:run '{"lat": 52.23, "lng": 21.01}'    # 20 fake streamers around that point
+npx convex run seed:demoChat                              # scripted conversation in demo matches
 ```
 
 Run the seed again after signing in: half of the fake streamers then like you
@@ -99,6 +109,7 @@ src/components/    swipe card, profile card, shared UI
 
 ## Docs
 
+- [Documentation](docs/README.md) — screens, architecture, data model, configuration (in Polish)
 - [How nearby search works](docs/szukanie-w-okolicy.md) (in Polish)
 
 ## Checks
